@@ -1,0 +1,13 @@
+{
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api"
+    },
+    {
+      "source": "/:user/:repo.svg",
+      "destination": "/api/:user/:repo.svg"
+    }
+  ]
+}
