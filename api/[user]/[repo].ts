@@ -26,20 +26,42 @@ function parseWhitelist(): Set<string> {
 
 async function getVersion(user: string, repo: string): Promise<string> {
   const pat = readEnv("GITHUB_PAT") ?? readEnv("PAT") ?? readEnv("PAT_1");
-  const headers = new Headers({
+  const githubUrl = `https://api.github.com/repos/${user}/${repo}/contents/package.json?ref=HEAD`;
+  const baseHeaders = {
     Accept: "application/vnd.github+json",
-    "User-Agent": "version-bag",
-  });
-  if (pat) {
-    headers.set("Authorization", `Bearer ${pat}`);
+    "User-Agent": "v-badge",
+  } satisfies Record<string, string>;
+
+  const fetchPackageJson = async (token?: string): Promise<Response> => {
+    const headers = new Headers(baseHeaders);
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    return fetch(githubUrl, { headers });
+  };
+
+  let response = await fetchPackageJson(pat);
+  if ((response.status === 401 || response.status === 403) && pat) {
+    response = await fetchPackageJson();
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${user}/${repo}/contents/package.json?ref=HEAD`,
-    { headers },
-  );
   if (!response.ok) {
-    throw [422, `package.json not available for ${user}/${repo}`] as const;
+    if (response.status === 404) {
+      throw [422, `package.json not available for ${user}/${repo}`] as const;
+    }
+    let responseMessage = `github status ${response.status}`;
+    try {
+      const errorPayload = (await response.json()) as { message?: unknown };
+      if (typeof errorPayload.message === "string") {
+        responseMessage = errorPayload.message;
+      }
+    } catch {
+      responseMessage = `github status ${response.status}`;
+    }
+    throw [
+      422,
+      `package.json not available for ${user}/${repo}: ${responseMessage}`,
+    ] as const;
   }
 
   const payload = (await response.json()) as {
@@ -91,7 +113,12 @@ async function svgBadge(
       "content-type": "image/svg+xml",
     },
     statusCode: 200,
-    body: `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="10"><text y="9" font-size="12" fill="#2d2d2d" font-family="Arial">v${version}</text></svg>`,
+    body: `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="10">
+      <text y="9" font-size="12" fill="#2d2d2d" font-family="Arial">
+        v${version}
+      </text>,
+    </svg>`,
   };
 }
 
