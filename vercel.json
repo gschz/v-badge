@@ -1,13 +1,19 @@
 {
-  "framework": null,
-  "rewrites": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/",
-      "destination": "/api"
+      "src": "api/**/*.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "^/$",
+      "dest": "/api/index.ts"
     },
     {
-      "source": "/:user/:repo.svg",
-      "destination": "/api/:user/:repo.svg"
+      "src": "^/([^/]+)/([^/]+\\.svg)$",
+      "dest": "/api/[user]/[repo].ts?user=$1&repo=$2"
     }
   ]
 }

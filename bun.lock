@@ -5,9 +5,9 @@
     "": {
       "name": "version-badg",
       "devDependencies": {
-        "@types/node": "latest",
-        "@vercel/node": "latest",
-        "typescript": "latest",
+        "@types/node": "^25.5.0",
+        "@vercel/node": "^5.6.18",
+        "typescript": "^6.0.2",
       },
     },
   },

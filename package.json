@@ -1,10 +1,12 @@
 {
   "name": "version-badg",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bunx --bun vercel dev",
+    "dev": "bunx --bun vercel dev",
+    "build": "bun run typecheck",
+    "start": "bun run build",
     "typecheck": "bunx --bun tsc --noEmit"
   },
   "devDependencies": {
