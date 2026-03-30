@@ -6,6 +6,8 @@ type EnvShape = {
   };
 };
 
+type ThemeMode = "auto" | "light" | "dark";
+
 function readEnv(name: string): string | undefined {
   const bunEnv = (globalThis as EnvShape).Bun?.env;
   return bunEnv?.[name] ?? process.env[name];
@@ -89,6 +91,7 @@ async function getVersion(user: string, repo: string): Promise<string> {
 async function svgBadge(
   user: string,
   repo: string,
+  theme: ThemeMode,
 ): Promise<{
   statusCode: number;
   headers: Record<string, string>;
@@ -106,6 +109,17 @@ async function svgBadge(
 
   const repoSanitized = repo.replace(svgFormat, "");
   const version = await getVersion(user, repoSanitized);
+  const lightFill = "#2d2d2d";
+  const darkFill = "#f5f5f5";
+  const textFill = theme === "dark" ? darkFill : lightFill;
+  const mediaStyle =
+    theme === "auto"
+      ? `<style>
+        @media (prefers-color-scheme: dark) {
+          .version-text { fill: ${darkFill}; }
+        }
+      </style>`
+      : "";
   return {
     headers: {
       "cache-control":
@@ -115,9 +129,10 @@ async function svgBadge(
     statusCode: 200,
     body: `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="10">
-      <text y="9" font-size="12" fill="#2d2d2d" font-family="Arial">
+      ${mediaStyle}
+      <text class="version-text" y="9" font-size="12" fill="${textFill}" font-family="Arial">
         v${version}
-      </text>,
+      </text>
     </svg>`,
   };
 }
@@ -128,10 +143,14 @@ export default async function handler(
 ): Promise<void> {
   const user = request.query.user;
   const repo = request.query.repo;
+  const theme = request.query.theme;
   const userValue = Array.isArray(user) ? user[0] : user;
   const repoValue = Array.isArray(repo) ? repo[0] : repo;
+  const themeValue = Array.isArray(theme) ? theme[0] : theme;
   const userValid = typeof userValue === "string" && userValue.length > 0;
   const repoValid = typeof repoValue === "string" && repoValue.length > 0;
+  const themeNormalized =
+    themeValue === "light" || themeValue === "dark" ? themeValue : "auto";
 
   try {
     if (!userValid && !repoValid) {
@@ -147,7 +166,7 @@ export default async function handler(
       return;
     }
 
-    const data = await svgBadge(userValue, repoValue);
+    const data = await svgBadge(userValue, repoValue, themeNormalized);
     response.status(data.statusCode);
     for (const [header, value] of Object.entries(data.headers)) {
       response.setHeader(header, value);
